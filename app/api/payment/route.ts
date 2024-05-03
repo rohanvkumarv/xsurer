@@ -4,11 +4,10 @@ import Razorpay from "razorpay"
 export const POST = async (req: Request) => {
     try {
         const { amount } = await req.json();
-        console.log("Amount is: " + amount)
+        const price = amount * 100
         const instance = new Razorpay({ key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!, key_secret: process.env.NEXT_PUBLIC_RAZORPAY_SECRET_KEY })
-        let id = ""
-        await instance.orders.create({
-            "amount": "50000",
+        const orders = await instance.orders.create({
+            "amount": price,
             "currency": "INR",
             "receipt": "receipt#1",
             "partial_payment": false,
@@ -16,15 +15,10 @@ export const POST = async (req: Request) => {
                 "key1": "value3",
                 "key2": "value2"
             }
-        }, (err, order) => {
-            if (err) {
-                console.error(err)
-            }
-            id = order.id
-            console.log(order.id)
         })
-        return new NextResponse(JSON.stringify(id))
+        return new NextResponse(JSON.stringify(orders))
     } catch (error) {
         console.error(error)
+        return new NextResponse(JSON.stringify(error))
     }
 }

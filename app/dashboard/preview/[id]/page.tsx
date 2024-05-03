@@ -1,9 +1,12 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
 import { useUser } from "@clerk/nextjs"
 import axios from "axios"
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import toast from "react-hot-toast"
+import Razorpay from "razorpay"
 
 const page = () => {
     const { user } = useUser()
@@ -13,23 +16,49 @@ const page = () => {
     const [amount, setAmount] = useState(0)
     useEffect(() => {
         const getPreview = async () => {
-            const res = await axios.post("/api/getpreview", { id })
-            if (res) {
-                console.log(res.data.price)
-                setData(res.data)
-                setAmount(res.data.price)
-            }
-        }
-        const getOrderId = async () => {
-            const res = await axios.post("/api/payment", { amount })
-            if (res) {
-                console.log(res)
-                setOrderId(res.data)
+            const response = await axios.post("/api/getpreview", { id })
+            if (response) {
+                console.log(response.data.price)
+                setData(response.data)
+                const res = await axios.post("/api/payment", { amount: response.data.price })
+                if (res) {
+                    console.log(res)
+                    setOrderId(res.data.id)
+                    setAmount(res.data.amount)
+                    console.log("After everything server : " + res.data.amount)
+                    console.log("After everything : " + amount)
+                }
             }
         }
         getPreview()
-        getOrderId()
     }, [])
+    const options = {
+        "key": process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        "amount": amount,
+        "currency": "INR",
+        "name": "Acme Corp",
+        "description": "Test Transaction",
+        "image": "https://example.com/your_logo",
+        "order_id": orderId,
+        "prefill": {
+            "name": "Gaurav Kumar",
+            "email": "gaurav.kumar@example.com",
+            "contact": "9000090000"
+        },
+        "notes": {
+            "address": "Razorpay Corporate Office"
+        },
+        "theme": {
+            "color": "#3399cc"
+        }
+    };
+    const processPayment = () => {
+        const razor = new window.Razorpay(options)
+        razor.open()
+        razor.on('payment.success', () => {
+            toast.success("Payment Successful")
+        })
+    }
     return (
         <div className='h-full flex items-center justify-center flex-col gap-4'>
             <div>
@@ -39,21 +68,7 @@ const page = () => {
                     <audio src={data.url} controls={true}></audio>
                 )}
             </div>
-            <form method="POST" action="https://api.razorpay.com/v1/checkout/embedded">
-                <input type="hidden" name="key_id" value={process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID} />
-                <input type="hidden" name="amount" value={data.price} />
-                <input type="hidden" name="order_id" value={orderId} />
-                <input type="hidden" name="name" value="Freelance Assurity" />
-                <input type="hidden" name="description" value="Preview Download" />
-                <input type="hidden" name="image" value="https://cdn.razorpay.com/logos/BUVwvgaqVByGp2_large.jpg" />
-                <input type="hidden" name="prefill[name]" value={user?.firstName!} />
-                <input type="hidden" name="prefill[contact]" value="9123456780" />
-                <input type="hidden" name="prefill[email]" value="gaurav.kumar@example.com" />
-                <input type="hidden" name="notes[shipping address]" value="L-16, The Business Centre, 61 Wellfield Road, New Delhi - 110001" />
-                <input type="hidden" name="callback_url" value="/dashboard/preview/success" />
-                <input type="hidden" name="cancel_url" value="/dashboard/preview/cancel" />
-                <button>Pay Now</button>
-            </form>
+            <Button onClick={processPayment}>Pay Now</Button>
         </div>
     )
 }
